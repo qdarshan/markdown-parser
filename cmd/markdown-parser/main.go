@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/qdarshan/markdown-parser/internal/parser"
+	"github.com/qdarshan/markdown-parser/internal/renderer"
+	"github.com/qdarshan/markdown-parser/internal/tokenizer"
 )
 
 //Tokenize -> Parse -> Render
@@ -73,7 +77,9 @@ func parseMarkdownHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parsedMarkdown := parseMarkdown(string(content))
+	tokens := tokenizer.Tokenize(string(content))
+	ast := parser.BuildAST(tokens)
+	parsedMarkdown := renderer.RenderHTML(ast)
 	pageData := PageData{Content: template.HTML(parsedMarkdown)}
 
 	tmpl, err := template.ParseFiles("template.html")
