@@ -1,6 +1,6 @@
 # PowerShell-specific build configuration
 APP_NAME = markdown-parser
-SRC = main.go
+SRC = .\cmd\markdown-parser\main.go
 BUILD_DIR = build
 BINARY = ${BUILD_DIR}/${APP_NAME}
 
@@ -27,7 +27,7 @@ run: build
 # Run the main.go
 .PHONY: frun
 frun:
-	go run main.go
+	go run ${SRC}
 
 # Run the binary
 .PHONY: exeqt
