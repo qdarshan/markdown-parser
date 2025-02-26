@@ -1,87 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/qdarshan/markdown-parser/internal/parser"
 	"github.com/qdarshan/markdown-parser/internal/renderer"
 	"github.com/qdarshan/markdown-parser/internal/tokenizer"
 )
 
-//Tokenize -> Parse -> Render
-
-// countPounds counts the leading '#' characters in a string.
-func countPounds(line string) int {
-	count := 0
-	for _, char := range line {
-		if char == '#' {
-			count++
-		} else {
-			break
-		}
-	}
-	return count
-}
-
-func parseHeading() {
-
-}
-
-// parseMarkdown converts Markdown content into basic HTML.
-func parseMarkdown(content string) string {
-	lines := strings.Split(content, "\n")
-	var body strings.Builder
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		if strings.HasPrefix(line, "#") {
-			count := countPounds(line)
-			text := strings.TrimSpace(line[count:])
-			body.WriteString(fmt.Sprintf("<h%d>%s</h%d>\n", count, text, count))
-		} else {
-			body.WriteString(fmt.Sprintf("<p>%s</p>\n", line))
-		}
-	}
-
-	return body.String()
-}
-
 // PageData represents the data structure for the HTML template.
 type PageData struct {
 	Content template.HTML
 }
 
-// parseMarkdownHandler serves the parsed Markdown as an HTML page.
+// parseMarkdownHandler serves the HTML template for the Markdown editor.
 func parseMarkdownHandler(w http.ResponseWriter, r *http.Request) {
-	file, err := os.Open("text.md")
-	if err != nil {
-		http.Error(w, "Could not open file", http.StatusInternalServerError)
-		log.Println("Error opening file:", err)
-		return
-	}
-	defer file.Close()
-
-	content, err := os.ReadFile("text.md")
-	if err != nil {
-		http.Error(w, "Error reading file", http.StatusInternalServerError)
-		log.Println("Error reading file:", err)
-		return
-	}
-
-	tokens := tokenizer.Tokenize(string(content))
-	ast := parser.BuildAST(tokens)
-	parsedMarkdown := renderer.RenderHTML(ast)
-	pageData := PageData{Content: template.HTML(parsedMarkdown)}
-
 	tmpl, err := template.ParseFiles("template.html")
 	if err != nil {
 		http.Error(w, "Template rendering error", http.StatusInternalServerError)
@@ -89,14 +24,41 @@ func parseMarkdownHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Render the template with empty content initially
+	pageData := PageData{Content: ""}
 	if err := tmpl.Execute(w, pageData); err != nil {
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
 		log.Println("Error executing template:", err)
 	}
 }
 
+// renderMarkdownHandler handles Markdown input from the user and returns the rendered HTML.
+func renderMarkdownHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Read Markdown input from the request body
+	markdownInput := r.FormValue("markdown")
+
+	// Tokenize -> Parse -> Render
+	tokens := tokenizer.Tokenize(markdownInput)
+	ast := parser.BuildAST(tokens)
+	renderedHTML := renderer.RenderHTML(ast)
+
+	// Return the rendered HTML as the response
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(renderedHTML))
+}
+
 func main() {
+	// Serve the Markdown editor page
 	http.HandleFunc("/", parseMarkdownHandler)
+
+	// Handle Markdown rendering requests
+	http.HandleFunc("/render", renderMarkdownHandler)
+
 	log.Println("Server started on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

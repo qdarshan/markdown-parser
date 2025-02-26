@@ -1,18 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Viewer</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-</head>
-<body>
-    <section class="section">
-        <div class="container">
-            <div class="content box">
-                {{ .Content }}
-            </div>
-        </div>
-    </section>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown Editor</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #4a69bd;
+        --primary-hover: #3c4d8b;
+        --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      }
+
+      .dark-mode {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: #e0e0e0;
+      }
+
+      .editor-container {
+        display: flex;
+        flex: 1;
+        height: calc(100vh - 56px);
+        gap: 1.5rem;
+        padding: 1.5rem;
+      }
+
+      .column {
+        flex: 1;
+        padding: 0;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: var(--transition);
+        background: white;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dark-mode .column {
+        background: #2a2a2a;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      }
+
+      .textarea {
+        height: calc(100% - 56px);
+        width: 100%;
+        padding: 1.5rem;
+        border: none;
+        outline: none;
+        resize: none;
+        font-size: 16px;
+        line-height: 1.6;
+        font-family: "Fira Code", monospace;
+        background: transparent;
+        color: inherit;
+      }
+
+      .output-box {
+        height: 100%;
+        padding: 1.5rem;
+        overflow-y: auto;
+        line-height: 1.6;
+      }
+
+      .buttons-bar {
+        padding: 0.75rem 1.5rem;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(4px);
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+      }
+
+      .dark-mode .buttons-bar {
+        background: rgba(30, 30, 30, 0.95);
+        border-bottom: 1px solid #333;
+      }
+
+      .button {
+        transition: var(--transition) !important;
+        font-weight: 500 !important;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .dark-mode .button {
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .render-button {
+        margin: 1rem 1.5rem 1.5rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+      }
+
+      .render-button:hover {
+        background: var(--primary-hover);
+        color: white;
+        transform: translateY(-1px);
+      }
+
+      #markdown-output h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0.75rem 0;
+      }
+
+      #markdown-output h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0.75rem 0;
+      }
+
+      #markdown-output h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0.75rem 0;
+      }
+
+      #markdown-output h4,
+      #markdown-output h5,
+      #markdown-output h6 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0.75rem 0;
+      }
+
+      #markdown-output p {
+        margin: 0.75rem 0;
+      }
+
+      #markdown-output a {
+        color: var(--primary);
+        text-decoration: underline;
+      }
+
+      #markdown-output code {
+        background: rgba(0, 0, 0, 0.05);
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: "Fira Code", monospace;
+      }
+
+      #markdown-output pre {
+        background: rgba(0, 0, 0, 0.05);
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 0.75rem 0;
+        overflow-x: auto;
+      }
+
+      #markdown-output blockquote {
+        border-left: 3px solid var(--primary);
+        margin: 0.75rem 0;
+        padding-left: 1rem;
+        color: #666;
+      }
+
+      .dark-mode #markdown-output code,
+      .dark-mode #markdown-output pre {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .dark-mode #markdown-output blockquote {
+        color: #aaa;
+      }
+
+      /* Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
+
+      .dark-mode ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="buttons-bar">
+      <button
+        class="button is-small is-primary"
+        onclick="toggleSection('input-section')"
+      >
+        <span class="icon"><i class="fas fa-edit"></i></span>
+        <span>Toggle Editor</span>
+      </button>
+      <button
+        class="button is-small is-info"
+        onclick="toggleSection('output-section')"
+      >
+        <span class="icon"><i class="fas fa-eye"></i></span>
+        <span>Toggle Preview</span>
+      </button>
+      <button class="button is-small is-dark" onclick="toggleDarkMode()">
+        <span class="icon"><i class="fas fa-moon"></i></span>
+        <span>Dark Mode</span>
+      </button>
+    </div>
+
+    <div class="editor-container">
+      <div id="input-section" class="column">
+        <textarea
+          id="markdown-input"
+          class="textarea"
+          placeholder="# Start writing your Markdown here..."
+        ></textarea>
+        <button class="button render-button" onclick="renderMarkdown()">
+          Render
+        </button>
+      </div>
+
+      <div id="output-section" class="column">
+        <div id="markdown-output" class="output-box"></div>
+      </div>
+    </div>
+
+    <script>
+      function toggleSection(id) {
+        const section = document.getElementById(id);
+        section.style.transform = section.classList.contains("is-hidden")
+          ? "translateX(0)"
+          : "translateX(100%)";
+        section.classList.toggle("is-hidden");
+      }
+
+      function toggleDarkMode() {
+        document.body.classList.toggle("dark-mode");
+        const btn = document.querySelector('[onclick="toggleDarkMode()"]');
+        btn.querySelector("i").classList.toggle("fa-moon");
+        btn.querySelector("i").classList.toggle("fa-sun");
+      }
+
+      function renderMarkdown() {
+        const markdownInput = document.getElementById("markdown-input").value;
+        const output = document.getElementById("markdown-output");
+
+        output.innerHTML =
+          '<div class="has-text-centered py-5"><i class="fas fa-spinner fa-spin"></i></div>';
+
+        fetch("/render", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `markdown=${encodeURIComponent(markdownInput)}`,
+        })
+          .then((response) => response.text())
+          .then((html) => {
+            output.innerHTML = html;
+
+            if (typeof Prism !== "undefined") {
+              Prism.highlightAll();
+            } else {
+              console.error("Prism.js is not loaded.");
+            }
+          })
+          .catch((error) => {
+            output.innerHTML = `
+              <div class="notification is-danger">
+                <button class="delete"></button>
+                Error rendering Markdown: ${error.message}
+              </div>
+            `;
+          });
+      }
+    </script>
+  </body>
 </html>
